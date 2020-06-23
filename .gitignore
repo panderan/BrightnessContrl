@@ -1,0 +1,6 @@
+*pycache*
+*vscode*
+*.xcf
+dist
+*app.spec
+build
