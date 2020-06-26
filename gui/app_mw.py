@@ -1,7 +1,7 @@
 import gui.uic.mainwindow as ui
 from ctypes import wintypes, windll, byref, Structure
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QWidget,  QSystemTrayIcon, QMenu, QAction, QMessageBox
+from PyQt5.QtWidgets import QWidget,  QSystemTrayIcon, QMenu, QAction, QMessageBox, QGraphicsDropShadowEffect
 from PyQt5.QtGui import QIcon, QCursor, QPalette, QPainter, QPainterPath, QColor, QPixmap
 from bclib.bc import get_physical_monitor_handles
 import res_rc
@@ -37,6 +37,11 @@ class AppMainWindow(QWidget):
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlag(Qt.FramelessWindowHint)
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setOffset(0, 0)
+        shadow.setColor(Qt.black)
+        shadow.setBlurRadius(8)
+        self.setGraphicsEffect(shadow)
 
         self.tray_icon = None
         self.tray_icon_menu = None
@@ -53,6 +58,8 @@ class AppMainWindow(QWidget):
         self.ui.btn_show_monitor_info.clicked.connect(self.slot_btn_show_monitor_info)
         self.ui.hsilder_brightness.valueChanged.connect(self.slot_hsilder_brightness_value_changed)
         self.ui.spinbox_brightness.valueChanged.connect(self.slot_spinbox_brightness_value_changed)
+        self.ui.hsilder_contrast.valueChanged.connect(self.slot_hsilder_contrast_value_changed)
+        self.ui.spinbox_contrast.valueChanged.connect(self.slot_spinbox_contrast_value_changed)
         self.tray_icon.activated.connect(self.slot_system_tray_activated)
         self.ui.btn_x.clicked.connect(self.close)
         self.ui.btn_x.setAttribute(Qt.WA_Hover, True)
@@ -65,6 +72,7 @@ class AppMainWindow(QWidget):
 
         monitor = self.ui.combobox_monitor.currentData()
         self.set_current_monitor_brightness(monitor.brightness)
+        self.set_current_monitor_contrast(monitor.contrast)
 
     def slot_hsilder_brightness_value_changed(self):
         self.ui.spinbox_brightness.setValue(self.ui.hsilder_brightness.value())
@@ -76,6 +84,16 @@ class AppMainWindow(QWidget):
         monitor = self.ui.combobox_monitor.currentData()
         monitor.brightness = self.ui.spinbox_brightness.value()
 
+    def slot_hsilder_contrast_value_changed(self):
+        self.ui.spinbox_contrast.setValue(self.ui.hsilder_contrast.value())
+        monitor = self.ui.combobox_monitor.currentData()
+        monitor.contrast = self.ui.hsilder_contrast.value()
+    
+    def slot_spinbox_contrast_value_changed(self):
+        self.ui.hsilder_contrast.setValue(self.ui.spinbox_contrast.value())
+        monitor = self.ui.combobox_monitor.currentData()
+        monitor.contrast = self.ui.spinbox_contrast.value()
+
     def set_current_monitor_brightness(self, brightness_values):
         self.ui.hsilder_brightness.setMinimum(brightness_values[0])
         self.ui.hsilder_brightness.setMaximum(brightness_values[-1])
@@ -83,6 +101,14 @@ class AppMainWindow(QWidget):
         self.ui.spinbox_brightness.setMinimum(brightness_values[0])
         self.ui.spinbox_brightness.setMaximum(brightness_values[-1])
         self.ui.spinbox_brightness.setValue(brightness_values[1])
+
+    def set_current_monitor_contrast(self, contrast_values):
+        self.ui.hsilder_contrast.setMinimum(contrast_values[0])
+        self.ui.hsilder_contrast.setMaximum(contrast_values[-1])
+        self.ui.hsilder_contrast.setValue(contrast_values[1])
+        self.ui.spinbox_contrast.setMinimum(contrast_values[0])
+        self.ui.spinbox_contrast.setMaximum(contrast_values[-1])
+        self.ui.spinbox_contrast.setValue(contrast_values[1])
 
     def action_restore(self):
         self.show()
@@ -218,15 +244,6 @@ class AppMainWindow(QWidget):
         self.setPalette(palette)
 
         painter = QPainter(self)
-        painter.drawPixmap(0, 0, 8, 8, QPixmap(':/images/border.png'), 0, 0, 8, 8)
-        painter.drawPixmap(8, 0, self.width()-16, 8, QPixmap(':/images/border.png'), 8, 0, 1, 8)
-        painter.drawPixmap(self.width()-8, 0, 8, 8, QPixmap(':/images/border.png'), 8, 0, 8, 8)
-        painter.drawPixmap(self.width()-8, 8, 8, self.height()-16, QPixmap(':/images/border.png'), 8, 8, 8, 1)
-        painter.drawPixmap(self.width()-8, self.height()-8, 8, 8, QPixmap(':/images/border.png'), 8, 8, 8, 8)
-        painter.drawPixmap(8, self.height()-8, self.width()-16, 8, QPixmap(':/images/border.png'), 8, 8, 1, 8)
-        painter.drawPixmap(0, self.height()-8, 8, 8, QPixmap(':/images/border.png'), 0, 8, 8, 8)
-        painter.drawPixmap(0, 8, 8, self.height() - 16, QPixmap(':/images/border.png'), 0, 8, 8, 1)
-
         shadow_width = 8
         painter.fillRect(shadow_width+1, \
                          shadow_width+1, \

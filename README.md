@@ -22,7 +22,7 @@ Select the monitor you want to adjust and drag the slider.
 
 This app also has a system tray icon, and the Exit button can actually exit from this app, the X button is just hidden it.
 
-As you see, the brightness(VCP code is 10) is the only setting that can be adjusted. Because this setting is the one I use most often. Many other configurations are not yet implemented. All the supported settings(VCP codes) can be seen in the monitor detail button, as shown below.
+As you see, the brightness, contrast(VCP code is 10 and 12) is the only settings that can be adjusted. Because this settings are used most often. Many other configurations are not yet implemented. All the supported settings(VCP codes) can be seen in the monitor detail button, as shown below.
 
 <img src="doc/detail.jpg" style="zoom: 67%;" />
 
