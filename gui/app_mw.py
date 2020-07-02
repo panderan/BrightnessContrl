@@ -1,11 +1,24 @@
-import gui.uic.mainwindow as ui
-from ctypes import wintypes, windll, byref, Structure
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtWidgets import QWidget,  QSystemTrayIcon, QMenu, QAction, QMessageBox, QGraphicsDropShadowEffect
-from PyQt5.QtGui import QIcon, QCursor, QPalette, QPainter, QPainterPath, QColor, QPixmap
-from bclib.bc import get_physical_monitor_handles
-import res_rc
+import logging
+import os
+import sys
+import time
+from ctypes import Structure, byref, windll, wintypes
 from enum import Enum
+from multiprocessing import Process
+
+from PyQt5.QtCore import QObject, QPoint, Qt
+from PyQt5.QtGui import (QColor, QCursor, QIcon, QPainter, QPainterPath,
+                         QPalette, QPixmap)
+from PyQt5.QtWidgets import (QAction, QGraphicsDropShadowEffect, QMenu,
+                             QMessageBox, QSystemTrayIcon, QWidget)
+
+import gui.uic.mainwindow as ui
+import res_rc
+from bclib.bc import get_physical_monitor_handles
+
+
+version = 1.2
+
 
 class ResizeDirtection(Enum):
     ''' 窗口缩放方向
@@ -27,6 +40,8 @@ class AppMainWindow(QWidget):
         self.ui.setupUi(self)
         self.monitors = []
 
+        self.__enable = True
+
         self._start_pos = None
         self._end_pos = None
         self._is_drag = False
@@ -37,6 +52,7 @@ class AppMainWindow(QWidget):
         self.setMouseTracking(True)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlag(Qt.FramelessWindowHint)
+        self.ui.label_wintitle.setText("Brightness Ctrl v%.1f"%version)
         shadow = QGraphicsDropShadowEffect(self)
         shadow.setOffset(0, 0)
         shadow.setColor(Qt.black)
@@ -55,6 +71,7 @@ class AppMainWindow(QWidget):
             self.tray_icon.setIcon(QIcon(':/images/icon.ico'))
             self.tray_icon.show()
         self.ui.btn_exit.clicked.connect(self.slot_btn_exit)
+        self.ui.tbtn_refresh.clicked.connect(self.slot_tbtn_refresh_clicked, Qt.DirectConnection)
         self.ui.btn_show_monitor_info.clicked.connect(self.slot_btn_show_monitor_info)
         self.ui.hsilder_brightness.valueChanged.connect(self.slot_hsilder_brightness_value_changed)
         self.ui.spinbox_brightness.valueChanged.connect(self.slot_spinbox_brightness_value_changed)
@@ -66,33 +83,88 @@ class AppMainWindow(QWidget):
         self.init_monitors()
 
     def init_monitors(self):
-        self.monitors = get_physical_monitor_handles()
+        err, self.monitors = get_physical_monitor_handles()
+        if err:
+            QMessageBox(QMessageBox.Critical, "错误", \
+                self.monitors + "\nPlease restart the app to refresh or continue using current devices handle.").exec()
+            return
+
+        self.ui.combobox_monitor.clear()
         for monitor in self.monitors:
             self.ui.combobox_monitor.addItem(monitor.description, monitor)
 
         monitor = self.ui.combobox_monitor.currentData()
-        self.set_current_monitor_brightness(monitor.brightness)
-        self.set_current_monitor_contrast(monitor.contrast)
+        if monitor is not None:
+            self.enable_all_settings(True)
+            self.set_current_monitor_brightness(monitor.brightness)
+            self.set_current_monitor_contrast(monitor.contrast)
+        else:
+            self.enable_all_settings(False)
+
+    def enable_all_settings(self, flag: bool):
+        if flag is not self.__enable:
+            self.ui.hsilder_brightness.setEnabled(flag)
+            self.ui.hsilder_contrast.setEnabled(flag)
+            self.ui.spinbox_brightness.setEnabled(flag)
+            self.ui.spinbox_contrast.setEnabled(flag)
+            self.__enable = flag
 
     def slot_hsilder_brightness_value_changed(self):
         self.ui.spinbox_brightness.setValue(self.ui.hsilder_brightness.value())
         monitor = self.ui.combobox_monitor.currentData()
-        monitor.brightness = self.ui.hsilder_brightness.value()
+        if monitor is not None:
+            monitor.brightness = self.ui.hsilder_brightness.value()
+            if monitor.errcheck:
+                QMessageBox(QMessageBox.Warning, "警告", \
+                    monitor.get_errstring_and_cls + "\nPlease refresh monitors.").exec()
+        else:
+            self.enable_all_settings(False)
     
     def slot_spinbox_brightness_value_changed(self):
         self.ui.hsilder_brightness.setValue(self.ui.spinbox_brightness.value())
         monitor = self.ui.combobox_monitor.currentData()
-        monitor.brightness = self.ui.spinbox_brightness.value()
+        if monitor is not None:
+            monitor.brightness = self.ui.spinbox_brightness.value()
+            if monitor.errcheck:
+                QMessageBox(QMessageBox.Warning, "警告", \
+                    monitor.get_errstring_and_cls + "\nPlease refresh monitors.").exec()
+        else:
+            self.enable_all_settings(False)
 
     def slot_hsilder_contrast_value_changed(self):
         self.ui.spinbox_contrast.setValue(self.ui.hsilder_contrast.value())
         monitor = self.ui.combobox_monitor.currentData()
-        monitor.contrast = self.ui.hsilder_contrast.value()
+        if monitor is not None:
+            monitor.contrast = self.ui.hsilder_contrast.value()
+            if monitor.errcheck:
+                QMessageBox(QMessageBox.Warning, "警告", \
+                    monitor.get_errstring_and_cls + "\nPlease refresh monitors.").exec()
+        else:
+            self.enable_all_settings(False)
     
     def slot_spinbox_contrast_value_changed(self):
         self.ui.hsilder_contrast.setValue(self.ui.spinbox_contrast.value())
         monitor = self.ui.combobox_monitor.currentData()
-        monitor.contrast = self.ui.spinbox_contrast.value()
+        if monitor is not None:
+            monitor.contrast = self.ui.spinbox_contrast.value()
+            if monitor.errcheck:
+                QMessageBox(QMessageBox.Warning, "警告", \
+                    monitor.get_errstring_and_cls + "\nPlease refresh monitors.").exec()
+        else:
+            self.enable_all_settings(False)
+    
+    def slot_tbtn_refresh_clicked(self):
+        from brightctrl_app import app, app_real_path
+        if app_real_path[len(app_real_path)-7: len(app_real_path)].lower() != 'app.exe':
+            QMessageBox(QMessageBox.Critical, "错误", \
+                "App path is incorrect(%s)\n\nPlease restart the app manually."%app_real_path).exec()
+            return
+        self.close()
+        self.tray_icon.hide()
+        logging.info("Restart APP: %s"%app_real_path)
+        os.startfile(app_real_path)
+        app.quit()
+        logging.info("Old app quit.")
 
     def set_current_monitor_brightness(self, brightness_values):
         self.ui.hsilder_brightness.setMinimum(brightness_values[0])
@@ -125,8 +197,11 @@ class AppMainWindow(QWidget):
 
     def slot_btn_show_monitor_info(self):
         monitor = self.ui.combobox_monitor.currentData()
-        dialog = QMessageBox(QMessageBox.Information, "Detail", monitor.show_info())
-        dialog.exec_()
+        if monitor is not None:
+            dialog = QMessageBox(QMessageBox.Information, "Detail", monitor.show_info())
+            dialog.exec_()
+        else:
+            self.enable_all_settings(False)
 
     def slot_system_tray_activated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
@@ -255,13 +330,3 @@ class AppMainWindow(QWidget):
                          self.width()-(shadow_width+1)*2 - 30, \
                          24, \
                          QColor(0,122,204))
-
-
-
-        
-
-
-
-
-
-

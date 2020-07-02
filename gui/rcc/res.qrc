@@ -3,5 +3,6 @@
     <file>icon.ico</file>
     <file>btn_x.png</file>
     <file>btn_x2.png</file>
+    <file>refresh.png</file>
   </qresource>
 </RCC>

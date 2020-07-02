@@ -3,6 +3,7 @@ from bclib.configurations import conf_brightness, conf_contrast
 
 class physical_monitor_ctrl(conf_brightness, conf_contrast):
     def __init__(self, handle, description, mccs_ver, vcp):
+        super().__init__()
         self.handle = handle
         self.description = description
         self.mccs_ver = mccs_ver
